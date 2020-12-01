@@ -1,10 +1,8 @@
 import csv
+import json 
 
-#list of victory times per puzzle
-victory_times = []
-
-#list of mouse clicks per puzzle
-clicks = []
+#list of the important data points per player
+compiled_data = []
 
 #list of players (full data)
 players = []
@@ -13,8 +11,8 @@ players = []
 sorted_players = []
 
 #open csv
-with open('a.csv') as file: 
-    a_file = csv.reader(file)
+with open('b.csv') as file: 
+    b_file = csv.reader(file)
 
     #variables to keep track of time
     start_time = 0
@@ -28,7 +26,7 @@ with open('a.csv') as file:
     player = []
 
     #sort the csv by UID
-    sorted_csv = sorted(a_file, key=lambda  row: row[1])
+    sorted_csv = sorted(b_file, key=lambda  row: row[1])
 
     #then place all the players into an array that contains all their moves
     for entry in sorted_csv:
@@ -56,46 +54,27 @@ with open('a.csv') as file:
         sorted_player = sorted(entry, key=lambda  row: row[2])
         sorted_players.append(sorted_player) 
 
+
     #go through the fully sorted csv (by plater + time)
     for p in players:
     
         #player base of UID's
         uid = []
-        
+
+        prev_seed = ""
+
+        num_clicks = 0
+
         for row in p:
-            
-            #skip the first row
-            if row[0] == 'Timestamp':
-                continue
 
-            #first find unique user
-            if row[1] not in uid:
-                uid.append(row[1])
+            num_clicks += 1 
+
+            if('seed' in row[5] and 'elapsed' in row[5]):
                 
-                num_clicks = 0
+                data = json.loads(row[5])
 
-                start_time = row[2]
+                compiled_data.append([row[1], data["elapsed"], num_clicks])
 
-
-            if(row[3] == 'mousedown'):
-                num_clicks += 1
-
-            #check when we get a victory
-            if row[3] == 'victory':
-                
-                #if so, set the end time
-                end_time = row[2]
-
-                #calculate the time elapsed
-                elapsed_time = (int(end_time) - int(start_time))
-
-
-                #and append the the list of times
-                victory_times.append([row[1], elapsed_time])
-                clicks.append ([row[1], num_clicks])
-
-                #then reset the start time
-                start_time = row[2]
                 num_clicks = 0
 
 def get_average_time(times_array):
@@ -113,7 +92,7 @@ def get_average_clicks(clicks_array):
     count = 0
 
     for entry in clicks_array:
-        average_clicks += entry[1]
+        average_clicks += entry[2]
         count += 1
 
     return (average_clicks / count)
@@ -121,7 +100,8 @@ def get_average_clicks(clicks_array):
 def get_average_per_player(data_array):
 
     averages = []
-    average = 0
+    caverage = 0
+    taverage = 0
     count = 0
 
     uid = []
@@ -131,49 +111,42 @@ def get_average_per_player(data_array):
 
         if(len(uid) == 0 ):
             uid.append(entry[0])
-            average += entry[1]
+            taverage += entry[1]
+            caverage += entry[2]
             count += 1
             prev_uid = entry
         elif(entry[0] not in uid):
-            
-            averages.append([prev_uid, float(average/count), count])
-
+            averages.append([prev_uid, float(taverage/count), float(caverage/count), count])
             uid.append(entry[0])
             count = 0
-            average = 0
-            average += entry[1]
+            taverage = 0
+            caverage = 0
+            taverage += entry[1]
+            caverage += entry[2]
             count += 1
             prev_uid = entry[0]
         else:
-            average += entry[1]
+            taverage += entry[1]
+            caverage += entry[2]
             count += 1
 
     return averages
 
-#print(victory_times)
+print("average time: " + str(get_average_time(compiled_data)))
+print("average clicks: " + str(get_average_clicks(compiled_data)))
 
-print("average time: " + str(get_average_time(victory_times)))
-print("average clicks: " + str(get_average_clicks(clicks)))
+p_avg = get_average_per_player(compiled_data)
 
-player_avg_clicks = get_average_per_player(clicks)
-player_avg_times = get_average_per_player(victory_times)
+for p in p_avg:
+    print(p)
 
-fields1 = ['UID', 'Avg Clicks', 'Count']
-fields2 = ['UID', 'Avg Times', 'Count']
+fields = ['UID', 'Avg Times', 'Avg Clicks', 'Count']
 
-a_clicks_csv = 'a_clicks.csv'
-a_times_csv = 'a_times.csv'
+b_data_csv = 'b_data.csv'
 
-with open(a_clicks_csv, 'w') as csvfile:
+with open(b_data_csv, 'w') as csvfile:
     csvwriter = csv.writer(csvfile)
 
-    csvwriter.writerow(fields1)
+    csvwriter.writerow(fields)
 
-    csvwriter.writerows(player_avg_clicks)
-
-with open(a_times_csv, 'w') as csvfile:
-    csvwriter = csv.writer(csvfile)
-
-    csvwriter.writerow(fields2)
-
-    csvwriter.writerows(player_avg_times)
+    csvwriter.writerows(p_avg)
